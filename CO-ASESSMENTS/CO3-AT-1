@@ -1,0 +1,181 @@
+1. Logical Address to Physical Address:
+Program:
+#include <stdio.h>
+
+int main() {
+    int base, limit, logical, physical;
+
+    printf("Enter Base Register: ");
+    scanf("%d", &base);
+
+    printf("Enter Limit Register: ");
+    scanf("%d", &limit);
+
+    printf("Enter Logical Address: ");
+    scanf("%d", &logical);
+
+    if (logical < limit) {
+        physical = base + logical;
+        printf("Valid Address\n");
+        printf("Physical Address = %d\n", physical);
+    } else {
+        printf("Invalid Address\n");
+    }
+
+    return 0;
+}
+OUTPUT(VALID):
+Enter Base Register: 1000
+Enter Limit Register: 500
+Enter Logical Address: 200
+Valid Address
+Physical Address = 1200
+
+OUTPUT(INVALID):
+Enter Base Register: 1000
+Enter Limit Register: 500
+Enter Logical Address: 700
+Invalid Address
+________________________________________________________________________________________________________________________________________________________________________________
+2. Paging Memory Management
+PROGRAM:
+#include <stdio.h>
+int main() {
+    int pageTable[5] = {3, 1, 4, 2, 0};
+    int page, offset;
+    int pageSize = 100;
+    int physical;
+    printf("Enter Page Number (0-4): ");
+    scanf("%d", &page);
+    printf("Enter Offset: ");
+    scanf("%d", &offset);
+    if (page >= 0 && page < 5 && offset < pageSize) {
+        physical = pageTable[page] * pageSize + offset;
+        printf("Physical Address = %d\n", physical);
+    } else {
+        printf("Invalid Address\n");
+    }
+    return 0;
+}
+OUTPUT:
+Enter Page Number (0-4): 2
+Enter Offset: 45
+Physical Address = 445
+_____________________________________________________________________________________________________________________________________________________________________
+3. Page Table Simulation
+PROGRAM:
+#include <stdio.h>
+
+int main() {
+    int n, page, offset, pageSize = 100;
+
+    printf("Enter number of pages: ");
+    scanf("%d", &n);
+
+    int pageTable[n];
+
+    printf("Enter Frame Numbers:\n");
+    for (int i = 0; i < n; i++) {
+        printf("Page %d -> ", i);
+        scanf("%d", &pageTable[i]);
+    }
+
+    printf("Enter Page Number: ");
+    scanf("%d", &page);
+
+    printf("Enter Offset: ");
+    scanf("%d", &offset);
+
+    if (page < n && offset < pageSize) {
+        printf("Frame Number = %d\n", pageTable[page]);
+        printf("Physical Address = %d\n",
+               pageTable[page] * pageSize + offset);
+    } else {
+        printf("Invalid Address\n");
+    }
+
+    return 0;
+}
+OUTPUT:
+Enter number of pages: 3
+Enter Frame Numbers:
+Page 0 -> 5
+Page 1 -> 2
+Page 2 -> 7
+Enter Page Number: 1
+Enter Offset: 20
+Frame Number = 2
+Physical Address = 220
+___________________________________________________________________________________________________________________________________________________________
+4. Translation Lookaside Buffer (TLB)
+PROGRAM:
+#include <stdio.h>
+
+int main() {
+    float memoryTime, tlbTime, hitRatio;
+    float withoutTLB, withTLB;
+
+    printf("Enter Memory Access Time: ");
+    scanf("%f", &memoryTime);
+
+    printf("Enter TLB Access Time: ");
+    scanf("%f", &tlbTime);
+
+    printf("Enter Hit Ratio (0 to 1): ");
+    scanf("%f", &hitRatio);
+
+    withoutTLB = 2 * memoryTime;
+
+    withTLB = hitRatio * (tlbTime + memoryTime)
+            + (1 - hitRatio) * (tlbTime + 2 * memoryTime);
+
+    printf("Access Time without TLB = %.2f\n", withoutTLB);
+    printf("Access Time with TLB = %.2f\n", withTLB);
+
+    return 0;
+}
+OUTPUT:
+
+Enter Memory Access Time: 100
+Enter TLB Access Time: 20
+Enter Hit Ratio (0 to 1): 0.8
+Access Time without TLB = 200.00
+Access Time with TLB = 140.00
+______________________________________________________________________________________________________________________________________________________________________
+5. Memory Protection using Base and Limit Registers
+PROGRAM:
+#include <stdio.h>
+
+int main() {
+    int base, limit, address;
+
+    printf("Enter Base Register: ");
+    scanf("%d", &base);
+
+    printf("Enter Limit Register: ");
+    scanf("%d", &limit);
+
+    printf("Enter Address: ");
+    scanf("%d", &address);
+
+    if (address >= base && address < base + limit) {
+        printf("Access Allowed\n");
+    } else {
+        printf("Access Denied\n");
+    }
+
+    return 0;
+}
+OUTPUT(ALLOWED):
+Enter Base Register: 1000
+Enter Limit Register: 500
+Enter Address: 1200
+Access Allowed
+
+OUTPUT(DENIED):
+Enter Base Register: 1000
+Enter Limit Register: 500
+Enter Address: 1700
+Access Denied
+
+
