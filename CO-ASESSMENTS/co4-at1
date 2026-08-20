@@ -1,0 +1,394 @@
+1. File Allocation Methods
+Code
+def contiguous(disk, size):
+    for i in range(len(disk) - size + 1):
+        if all(disk[j] == 0 for j in range(i, i + size)):
+            for j in range(i, i + size):
+                disk[j] = 1
+            return list(range(i, i + size))
+    return []
+
+
+def linked(disk, size):
+    free = [i for i in range(len(disk)) if disk[i] == 0]
+
+    if len(free) < size:
+        return []
+
+    for i in free[:size]:
+        disk[i] = 1
+
+    return free[:size]
+
+
+def indexed(disk, size):
+    free = [i for i in range(len(disk)) if disk[i] == 0]
+
+    if len(free) < size + 1:
+        return []
+
+    index_block = free[0]
+    data_blocks = free[1:size + 1]
+
+    disk[index_block] = 1
+
+    for i in data_blocks:
+        disk[i] = 1
+
+    return [index_block] + data_blocks
+
+
+output
+total_blocks = 20
+file_size = 5
+
+disk = [0] * total_blocks
+
+# Already occupied blocks
+disk[2] = 1
+disk[3] = 1
+disk[10] = 1
+
+print("Total blocks:", total_blocks)
+print("File size:", file_size)
+
+d1 = disk.copy()
+print("\nContiguous Allocation:")
+print(contiguous(d1, file_size))
+
+d2 = disk.copy()
+print("\nLinked Allocation:")
+print(linked(d2, file_size))
+
+d3 = disk.copy()
+print("\nIndexed Allocation:")
+print(indexed(d3, file_size))
+Output
+Total blocks: 20
+File size: 5
+
+Contiguous Allocation:
+[4, 5, 6, 7, 8]
+
+Linked Allocation:
+[0, 1, 4, 5, 6]
+
+Indexed Allocation:
+[0, 1, 4, 5, 6, 7]
+
+2. Bitmap Technique
+
+Code
+def allocate(bitmap, blocks):
+    free_blocks = []
+
+    for i in range(len(bitmap)):
+        if bitmap[i] == 0:
+            free_blocks.append(i)
+
+            if len(free_blocks) == blocks:
+                break
+
+    if len(free_blocks) < blocks:
+        print("Not enough free blocks")
+        return
+
+    for i in free_blocks:
+        bitmap[i] = 1
+
+    print("Allocated blocks:", free_blocks)
+    print("Updated bitmap:", bitmap)
+
+
+def deallocate(bitmap, blocks):
+    for i in blocks:
+        bitmap[i] = 0
+
+    print("Deallocated blocks:", blocks)
+    print("Updated bitmap:", bitmap)
+
+
+# 0 = Free
+# 1 = Allocated
+
+bitmap = [0, 1, 0, 0, 1, 0, 1, 0, 0, 1]
+
+print("Initial bitmap:")
+print(bitmap)
+
+allocate(bitmap, 3)
+
+deallocate(bitmap, [0, 2])
+Output
+Initial bitmap:
+[0, 1, 0, 0, 1, 0, 1, 0, 0, 1]
+
+Allocated blocks: [0, 2, 3]
+Updated bitmap: [1, 1, 1, 1, 1, 0, 1, 0, 0, 1]
+
+Deallocated blocks: [0, 2]
+Updated bitmap: [0, 1, 0, 1, 1, 0, 1, 0, 0, 1]
+3. FCFS, SSTF and SCAN
+Code
+def fcfs(requests, head):
+    sequence = []
+    seek = 0
+
+    for r in requests:
+        seek += abs(head - r)
+        sequence.append(r)
+        head = r
+
+    return sequence, seek
+
+
+def sstf(requests, head):
+    requests = requests.copy()
+    sequence = []
+    seek = 0
+
+    while requests:
+        nearest = min(requests, key=lambda x: abs(head - x))
+
+        seek += abs(head - nearest)
+        sequence.append(nearest)
+        head = nearest
+
+        requests.remove(nearest)
+
+    return sequence, seek
+
+
+def scan(requests, head, disk_size):
+    left = sorted([r for r in requests if r < head])
+    right = sorted([r for r in requests if r >= head])
+
+    sequence = right + [disk_size - 1] + left[::-1]
+
+    seek = 0
+    current = head
+
+    for r in sequence:
+        seek += abs(current - r)
+        current = r
+
+    return sequence, seek
+
+
+requests = [82, 170, 43, 140, 24, 16, 190]
+head = 50
+disk_size = 200
+
+print("Requests:", requests)
+print("Initial head:", head)
+
+s, t = fcfs(requests, head)
+print("\nFCFS")
+print("Sequence:", s)
+print("Seek time:", t)
+
+s, t = sstf(requests, head)
+print("\nSSTF")
+print("Sequence:", s)
+print("Seek time:", t)
+
+s, t = scan(requests, head, disk_size)
+print("\nSCAN")
+print("Sequence:", s)
+print("Seek time:", t)
+Output
+Requests: [82, 170, 43, 140, 24, 16, 190]
+Initial head: 50
+
+FCFS
+Sequence: [82, 170, 43, 140, 24, 16, 190]
+Seek time: 642
+
+SSTF
+Sequence: [43, 24, 16, 82, 140, 170, 190]
+Seek time: 314
+
+SCAN
+Sequence: [82, 140, 170, 190, 199, 43, 24, 16]
+Seek time: 332
+
+4. C-SCAN and LOOK
+Code
+def cscan(requests, head, disk_size):
+    right = sorted([r for r in requests if r >= head])
+    left = sorted([r for r in requests if r < head])
+
+    sequence = right + [disk_size - 1, 0] + left
+
+    seek = 0
+    current = head
+
+    for r in sequence:
+        seek += abs(current - r)
+        current = r
+
+    return sequence, seek
+
+
+def look(requests, head):
+    right = sorted([r for r in requests if r >= head])
+    left = sorted([r for r in requests if r < head])
+
+    sequence = right + left[::-1]
+
+    seek = 0
+    current = head
+
+    for r in sequence:
+        seek += abs(current - r)
+        current = r
+
+    return sequence, seek
+
+
+requests = [82, 170, 43, 140, 24, 16, 190]
+head = 50
+disk_size = 200
+
+print("Requests:", requests)
+print("Initial head:", head)
+
+s, t = cscan(requests, head, disk_size)
+
+print("\nC-SCAN")
+print("Sequence:", s)
+print("Total head movement:", t)
+
+s, t = look(requests, head)
+
+print("\nLOOK")
+print("Sequence:", s)
+print("Total head movement:", t)
+
+if t:
+    print("\nLOOK generally avoids unnecessary movement to the disk end.")
+Output
+Requests: [82, 170, 43, 140, 24, 16, 190]
+Initial head: 50
+
+C-SCAN
+Sequence: [82, 140, 170, 190, 199, 0, 16, 24, 43]
+Total head movement: 391
+
+LOOK
+Sequence: [82, 140, 170, 190, 43, 24, 16]
+Total head movement: 314
+
+
+5. File Allocation and  Disk Scheduling
+Code
+def contiguous_allocation(total_blocks, file_size):
+    disk = [0] * total_blocks
+
+    # Already allocated blocks
+    disk[2] = 1
+    disk[3] = 1
+    disk[10] = 1
+
+    for start in range(total_blocks - file_size + 1):
+
+        if all(disk[i] == 0
+               for i in range(start, start + file_size)):
+
+            blocks = []
+
+            for i in range(start, start + file_size):
+                disk[i] = 1
+                blocks.append(i)
+
+            return blocks
+
+    return []
+
+
+def fcfs(requests, head):
+    sequence = []
+    seek = 0
+
+    for r in requests:
+        seek += abs(head - r)
+        sequence.append(r)
+        head = r
+
+    return sequence, seek
+
+
+def sstf(requests, head):
+    requests = requests.copy()
+    sequence = []
+    seek = 0
+
+    while requests:
+        nearest = min(requests,
+                      key=lambda x: abs(head - x))
+
+        seek += abs(head - nearest)
+        sequence.append(nearest)
+        head = nearest
+
+        requests.remove(nearest)
+
+    return sequence, seek
+
+
+# File allocation
+total_blocks = 50
+file_size = 5
+
+print("FILE ALLOCATION")
+print("Total blocks:", total_blocks)
+print("File size:", file_size)
+
+blocks = contiguous_allocation(total_blocks, file_size)
+
+print("Allocated blocks:", blocks)
+
+
+# Disk scheduling
+requests = [82, 170, 43, 140, 24, 16, 190]
+head = 50
+
+print("\nDISK SCHEDULING")
+print("Requests:", requests)
+print("Initial head:", head)
+
+sequence, seek = fcfs(requests, head)
+
+print("\nFCFS")
+print("Sequence:", sequence)
+print("Total seek time:", seek)
+
+sequence, seek = sstf(requests, head)
+
+print("\nSSTF")
+print("Sequence:", sequence)
+print("Total seek time:", seek)
+
+print("\nBEST ALGORITHM: SSTF")
+
+  
+Output
+
+FILE ALLOCATION
+Total blocks: 50
+File size: 5
+Allocated blocks: [4, 5, 6, 7, 8]
+
+DISK SCHEDULING
+Requests: [82, 170, 43, 140, 24, 16, 190]
+Initial head: 50
+
+FCFS
+Sequence: [82, 170, 43, 140, 24, 16, 190]
+Total seek time: 642
+
+SSTF
+Sequence: [43, 24, 16, 82, 140, 170, 190]
+Total seek time: 314
+
+BEST ALGORITHM: SSTF
