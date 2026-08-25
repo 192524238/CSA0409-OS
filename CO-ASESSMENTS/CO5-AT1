@@ -1,0 +1,224 @@
+NAME:G.KOUSHIK
+REGNO:192524238
+COURSECODE:CSA0409
+
+1) Optimized Linux File System Layout for a 50 GB Server
+ ANS:
+
+
+var         → 8 GB
+log     → 10 GB separate filesystem
+home        → 7 GB
+opt         → 8 GB
+The server has 50 GB storage and must handle system logs, user files and application data. The main problem is that rapidly growing logs may consume all disk space and stop critical services.
+
+A suitable allocation is:
+
+Partition	Size	Purpose
+boot	1 GB	Kernel and boot files
+8 GB	Operating system
+home	7 GB	User files
+var	8 GB	Variable application/system data
+var/log	10 GB	System and application logs
+opt	8 GB	Application software/data
+Swap	4 GB	Memory support
+Reserved	4 GB	Emergency expansion
+Total	50 GB	
+
+The most important decision is to create a separate 10 GB /var/log filesystem. Therefore, even if logs grow rapidly, they cannot consume the space required by / or /home.
+Use logrotate to control log growth:
+sudo logrotate /etc/logrotate.conf
+A logrotate policy can rotate logs daily, compress old logs and retain only a fixed number of files.
+Disk usage can be monitored using:
+df -h
+du -sh /var/log
+Systemd journal usage can also be limited:
+journalctl --vacuum-size=2G
+LVM is recommended because logical volumes can be expanded more easily when additional storage is added.
+
+Conclusion:
+
+*Separate /var/log prevents logs from filling the root filesystem.
+*logrotate controls and compresses old log files.
+*Monitoring detects high disk usage early.
+*LVM provides flexible storage management.
+*Critical services remain protected from disk-space exhaustion.
+___________________________________________________________________________________________________________________________________________________________________________________________
+Q2. Reducing Context-Switching Delays in Linux:
+ANS)
+Frequent context switching occurs when the CPU repeatedly changes between processes or threads. This introduces scheduling overhead and can reduce performance, especially for real-time applications.
+
+First measure the problem:
+vmstat 1
+pidstat -w 1
+top
+vmstat displays context switches, while pidstat identifies processes producing excessive switching.
+CPU affinity can be used to keep an important application on selected CPUs:
+taskset -c 2,3 ./realtime_app
+This can improve cache locality and reduce CPU migration.
+Process priority can be changed using:
+sudo renice -n -10 -p PID
+For reaL-time applications, Linux real-time scheduling can be used:
+sudo chrt -f 80 
+SCHED_FIFO gives the application real-time scheduling priority, but it must be used carefully because a badly configured real-time process can starve other processes.
+Unnecessary background services should also be reduced:
+systectl list-units --type=service
+For demanding real-time workloads, a PREEMPT_RT kernel and CPU isolation can reduce scheduling latency.
+Kernel modules can be inspected using:
+
+lsmod
+
+and loaded when required using:
+
+sudo modprobe module_name
+
+Conclusion: Measure first, then use CPU affinity, priority tuning, real-time scheduling, CPU isolation and an appropriate real-time kernel. These techniques reduce context-switching overhead without requiring hardware upgrades.
+______________________________________________________________________________________________________________________________________________________________________________________________
+Q3. Processing 1 Million Log Entries Within 2 Minutes
+Processing one million records using shell scripting requires minimizing process creation and avoiding repeated scans of the same file.
+
+A poor approach is:
+
+while read line
+do
+    echo "$line" | grep ERROR
+done < logfile
+
+This is slow because external commands may be created repeatedly.
+
+Instead, use awk, which can process the entire file in a single pass:
+
+awk '/ERROR/ {count++} END {print "Errors:", count}' logfile
+
+To extract error entries:
+
+awk '/ERROR/ {print}' logfile > errors.log
+
+For simple fixed-string searches, use:
+
+grep -Fc 'ERROR' logfile
+
+Avoid unnecessary commands such as:
+
+cat logfile | grep ERROR
+
+Use:
+
+grep ERROR logfile
+
+If several types of entries must be counted, process the file only once:
+
+awk '
+  {error++}
+ {warning++}
+  {info++}
+END {
+ print "ERROR:",error
+ print "WARNING:",warning
+ print "INFO:",info
+}' logfile
+
+This is faster because the million-line file is scanned once rather than several times.
+
+Execution time should be tested using:
+
+time ./process_logs.sh
+
+The real execution time must be below 120 seconds.
+
+Conclusion: awk is the best choice for complex filtering, counting and transformation because it processes records efficiently in a single pass. grep is suitable for simple searches. Avoid per-line external commands and repeated file scans to meet the 2-minute requirement.
+_____________________________________________________________________________________________________________________________________________________________________________________________________
+Q4. Managing a Faulty Process Using 90% CPU
+A process consuming 90% CPU can reduce the performance of other services. Since rebooting is not allowed, the process should be identified, monitored and controlled safely.
+
+First identify the process:
+
+top
+
+or:
+
+ps aux --sort=-%cpu | head
+
+Suppose the faulty process has PID 2351.
+
+Check its details:
+
+ps -fp 2351
+pstree -p 2351
+
+Monitor it using:
+
+pidstat -p 2351 1
+
+If the process is not critical, its priority can first be reduced:
+
+sudo renice 10 -p 2351
+
+If it belongs to a systemd service, stop the service gracefully:
+
+sudo systemctl stop faulty.service
+
+If necessary, send SIGTERM:
+
+kill -TERM 2351
+
+SIGTERM allows the application to terminate cleanly. Only if the process refuses to terminate should SIGKILL be used:
+
+kill -KILL 2351
+
+Before stopping it, verify that it is not a critical process. Running services can be checked with:
+
+systemctl --type=service --state=running
+
+Afterwards, investigate the cause using:
+
+journalctl -u faulty.service
+
+For deeper CPU analysis:
+
+perf top -p 2351
+
+The recommended sequence is:
+
+Identify → Monitor → Reduce priority → Gracefully stop → SIGTERM → SIGKILL as last resort → Investigate cause.
+
+Conclusion: This approach controls the faulty process without rebooting the server and minimizes the risk of affecting critical services.
+
+Q5. RAM Allocation for 5 Virtual Machines
+The physical server has 16 GB RAM. The host operating system requires 4 GB, leaving:
+
+16−4=12GB
+for virtual machines.
+Each of the five VMs requires at least 2 GB:
+5×2=10 GB
+Therefore, all five VMs can operate because:
+
+10 GB<12 GB
+The basic allocation is:
+Resource	RAM
+Host OS	4 GB
+VM1	2 GB
+VM2	2 GB
+VM3	2 GB
+VM4	2 GB
+VM5	2 GB
+Remaining pool	2 GB
+Total	16 GB
+THe remaining 2 GB can be used as a controlled resource pool. If one VM has a higher workload, additional memory can be assigned to it using supported virtualization features such as memory ballooning/dynamic memory.
+For example:
+Host = 4 GB
+VM1  = 2 GB
+VM2  = 2 GB
+VM3  = 2 GB
+VM4  = 3 GB
+VM5  = 2 GB
+Total = 15 GB
+
+This still leaves 1 GB of physical headroom.
+
+Memory usage should be monitored using:
+
+The administrator should avoid excessive memory overcommitment because it can cause swapping and significantly reduce VM performance.
+
+Conclusion: Reserve 4 GB for the host, allocate at least 2 GB to each VM, and retain 2 GB as a flexible resource pool. Dynamic allocation can then give extra memory to busy VMs while maintaining system stability.
+
